@@ -9,7 +9,8 @@ export async function createResult(containerEl, value) {
     return;
   }
 
-  // const prevResultEl = containerEl.querySelector('bs-result[value="' + value + '"]');
+  console.log(':::: createResult » | »»', value);
+
   const prevResultEl = containerEl.querySelector(`bs-result[value="${value}"]`);
 
   if (prevResultEl) {

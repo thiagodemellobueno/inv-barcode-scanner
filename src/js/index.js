@@ -18,43 +18,37 @@ import { toastify } from './helpers/toastify.js';
 import { VideoCapture } from './components/video-capture.js';
 import './components/clipboard-copy.js';
 import './components/bs-result.js';
-import './components/bs-settings.js';
-import './components/bs-history.js';
+import { getBookDetails } from './helpers/getBookDetails.js';
+import { isValidISBN } from './helpers/isValidISBN.js';
+import { loadCSV, appendEntry, updateEntry } from './helpers/csv.js';
 
 (async function () {
-  const tabGroupEl = document.querySelector('a-tab-group');
   const videoCaptureEl = document.querySelector('video-capture');
-  const bsSettingsEl = document.querySelector('bs-settings');
-  const bsHistoryEl = document.querySelector('bs-history');
   const cameraPanel = document.getElementById('cameraPanel');
   const cameraResultsEl = cameraPanel.querySelector('.results');
-  const filePanel = document.getElementById('filePanel');
-  const fileResultsEl = filePanel.querySelector('.results');
   const scanInstructionsEl = document.getElementById('scanInstructions');
   const scanBtn = document.getElementById('scanBtn');
-  const dropzoneEl = document.getElementById('dropzone');
   const resizeObserverEl = document.querySelector('resize-observer');
   const scanFrameEl = document.getElementById('scanFrame');
   const torchButton = document.getElementById('torchButton');
   const globalActionsEl = document.getElementById('globalActions');
-  const historyBtn = document.getElementById('historyBtn');
-  const historyDialog = document.getElementById('historyDialog');
-  const settingsBtn = document.getElementById('settingsBtn');
-  const settingsDialog = document.getElementById('settingsDialog');
-  const settingsForm = document.getElementById('settingsForm');
   const cameraSelect = document.getElementById('cameraSelect');
   const SCAN_RATE_LIMIT = 1000;
   let scanTimeoutId = null;
   let shouldScan = true;
 
+  const CSV_PATH = './csv/pitventory.csv';
+
+  // load the csv file
+  let bookData = loadCSV(CSV_PATH);
+  console.log('»»»»»', bookData);
+
   // By default the dialog elements are hidden for browsers that don't support the dialog element.
   // If the dialog element is supported, we remove the hidden attribute and the dialogs' visibility
   // is controlled by using the `showModal()` and `close()` methods.
-  if (isDialogElementSupported()) {
-    globalActionsEl?.removeAttribute('hidden');
-    historyDialog?.removeAttribute('hidden');
-    settingsDialog?.removeAttribute('hidden');
-  }
+  // if (isDialogElementSupported()) {
+  //   globalActionsEl?.removeAttribute('hidden');
+  // }
 
   const { barcodeReaderError } = await BarcodeReader.setup();
 
@@ -63,15 +57,13 @@ import './components/bs-history.js';
 
     shouldScan = false;
     globalActionsEl?.setAttribute('hidden', '');
-    tabGroupEl?.setAttribute('hidden', '');
     alertEl?.setAttribute('open', '');
 
     return; // Stop the script execution as BarcodeDetector API is not supported.
   }
 
   const supportedBarcodeFormats = await BarcodeReader.getSupportedFormats();
-  const [, settings] = await getSettings();
-  const intitialFormats = settings?.formats || supportedBarcodeFormats;
+  const intitialFormats = supportedBarcodeFormats;
   let barcodeReader = await BarcodeReader.create(intitialFormats);
 
   videoCaptureEl.addEventListener('video-capture:video-play', handleVideoCapturePlay, {
@@ -87,11 +79,6 @@ import './components/bs-history.js';
   const videoCaptureShadowRoot = videoCaptureEl?.shadowRoot;
   const videoCaptureVideoEl = videoCaptureShadowRoot?.querySelector('video');
   const videoCaptureActionsEl = videoCaptureShadowRoot?.querySelector('[part="actions-container"]');
-
-  dropzoneEl.accept = ACCEPTED_MIME_TYPES.join(',');
-  bsSettingsEl.supportedFormats = supportedBarcodeFormats;
-
-  // let lastScanTime = 0;
 
   /**
    * Scans for barcodes.
@@ -109,18 +96,21 @@ import './components/bs-history.js';
     scanInstructionsEl?.removeAttribute('hidden');
 
     try {
+      console.log('scan');
       const [, settings] = await getSettings();
       const barcode = await barcodeReader.detect(videoCaptureVideoEl);
       const barcodeValue = barcode?.rawValue ?? '';
+      let book = {};
 
       if (!barcodeValue) {
         throw new Error('No barcode detected');
       }
 
       createResult(cameraResultsEl, barcodeValue);
+      book = await getBookDetails(barcodeValue);
 
-      if (settings?.addToHistory) {
-        bsHistoryEl?.add(barcodeValue);
+      if (book) {
+        console.log('book', book);
       }
 
       triggerScanEffects();
@@ -153,127 +143,7 @@ import './components/bs-history.js';
     scanBtn?.setAttribute('hidden', '');
     scanFrameEl?.removeAttribute('hidden');
     videoCaptureActionsEl?.removeAttribute('hidden');
-    // hideResult(cameraPanel);
     scan();
-  }
-
-  /**
-   * Handles the tab show event.
-   * It is responsible for starting or stopping the scan process based on the selected tab.
-   *
-   * @param {CustomEvent} evt - The event object.
-   */
-  function handleTabShow(evt) {
-    const tabId = evt.detail.tabId;
-    const videoCaptureEl = document.querySelector('video-capture'); // Get the latest instance of video-capture element to ensure we don't use the cached one.
-
-    if (tabId === 'cameraTab') {
-      shouldScan = true;
-
-      if (!videoCaptureEl) {
-        return;
-      }
-
-      if (!videoCaptureEl.loading && scanBtn.hasAttribute('hidden')) {
-        scanFrameEl?.removeAttribute('hidden');
-        videoCaptureActionsEl?.removeAttribute('hidden');
-        scan();
-      }
-
-      if (typeof videoCaptureEl.startVideoStream === 'function') {
-        const videoDeviceId = cameraSelect?.value || undefined;
-        videoCaptureEl.startVideoStream(videoDeviceId);
-      }
-    } else if (tabId === 'fileTab') {
-      shouldScan = false;
-
-      if (videoCaptureEl != null && typeof videoCaptureEl.stopVideoStream === 'function') {
-        videoCaptureEl.stopVideoStream();
-      }
-
-      scanFrameEl?.setAttribute('hidden', '');
-      videoCaptureActionsEl?.setAttribute('hidden', '');
-    }
-  }
-
-  /**
-   * Handles the selection of a file.
-   * It is responsible for displaying the selected file in the dropzone.
-   *
-   * @param {File} file - The selected file.
-   */
-  async function handleFileSelect(file) {
-    if (!file) {
-      return;
-    }
-
-    const [, settings] = await getSettings();
-    const image = new Image();
-    const reader = new FileReader();
-
-    reader.onload = evt => {
-      const data = evt.target.result;
-
-      image.onload = async () => {
-        try {
-          const barcode = await barcodeReader.detect(image);
-          const barcodeValue = barcode?.rawValue ?? '';
-
-          if (!barcodeValue) {
-            throw new Error('No barcode detected');
-          }
-
-          createResult(fileResultsEl, barcodeValue);
-
-          if (settings?.addToHistory) {
-            bsHistoryEl?.add(barcodeValue);
-          }
-
-          triggerScanEffects();
-        } catch (err) {
-          log.error(err);
-
-          toastify(
-            '<strong>No barcode detected</strong><br><small>Please try again with a different image.</small>',
-            { variant: 'danger', trustDangerousInnerHTML: true }
-          );
-
-          triggerScanEffects({ success: false });
-        }
-      };
-
-      image.src = data;
-      image.alt = 'Image preview';
-
-      dropzoneEl.replaceChildren();
-
-      const preview = document.createElement('div');
-      preview.className = 'dropzone-preview';
-
-      const imageWrapper = document.createElement('div');
-      imageWrapper.className = 'dropzone-preview__image-wrapper';
-
-      const fileNameWrapper = document.createElement('div');
-      fileNameWrapper.className = 'dropzone-preview__file-name';
-      fileNameWrapper.textContent = file.name;
-
-      imageWrapper.appendChild(image);
-      preview.appendChild(imageWrapper);
-      preview.appendChild(fileNameWrapper);
-      dropzoneEl.prepend(preview);
-    };
-
-    reader.readAsDataURL(file);
-  }
-
-  /**
-   * Handles the drop event on the dropzone.
-   *
-   * @param {CustomEvent} evt - The event object.
-   */
-  function handleFileDrop(evt) {
-    const file = evt.detail.acceptedFiles[0];
-    handleFileSelect(file);
   }
 
   /**
@@ -387,45 +257,6 @@ import './components/bs-history.js';
   }
 
   /**
-   * Handles the settings button click event.
-   * It is responsible for displaying the settings dialog.
-   */
-  function handleSettingsButtonClick() {
-    settingsDialog.open = true;
-  }
-
-  /**
-   * Handles the change event on the settings form.
-   * It is responsible for saving the settings to persistent storage and updating the settings.
-   *
-   * @param {Event} evt - The event object.
-   */
-  async function handleSettingsFormChange(evt) {
-    evt.preventDefault();
-
-    const settings = {};
-    const formData = new FormData(settingsForm);
-    const generalSettings = formData.getAll('general-settings');
-    const formatsSettings = formData.getAll('formats-settings');
-
-    generalSettings.forEach(value => (settings[value] = true));
-    settings.formats = formatsSettings;
-    setSettings(settings);
-
-    if (evt.target.name === 'formats-settings') {
-      barcodeReader = await BarcodeReader.create(formatsSettings);
-    }
-  }
-
-  /**
-   * Handles the click event on the history button.
-   * It is responsible for displaying the history dialog.
-   */
-  function handleHistoryButtonClick() {
-    historyDialog.open = true;
-  }
-
-  /**
    * Handles the click event on the torch button.
    * It is responsible for toggling the torch on and off.
    *
@@ -460,12 +291,9 @@ import './components/bs-history.js';
    * It is responsible for stopping the scan process when the document is not visible.
    */
   function handleDocumentVisibilityChange() {
-    const selectedTab = tabGroupEl.querySelector('[selected]');
-    const tabId = selectedTab.getAttribute('id');
-
-    if (tabId !== 'cameraTab') {
-      return;
-    }
+    // if (tabId !== 'cameraTab') {
+    //   return;
+    // }
 
     if (document.visibilityState === 'hidden') {
       shouldScan = false;
@@ -501,9 +329,6 @@ import './components/bs-history.js';
   function handleDocumentEscapeKey() {
     const cameraTabSelected = tabGroupEl.querySelector('#cameraTab').hasAttribute('selected');
     const scanBtnVisible = !scanBtn.hidden;
-    const settingsDialogOpen = settingsDialog.hasAttribute('open');
-    const historyDialogOpen = historyDialog.hasAttribute('open');
-    const anyDialogOpen = settingsDialogOpen || historyDialogOpen;
 
     if (!scanBtnVisible || !cameraTabSelected || anyDialogOpen) {
       return;
@@ -521,43 +346,8 @@ import './components/bs-history.js';
     }
   }
 
-  /**
-   * Handles success events from the history component.
-   *
-   * @param {CustomEvent<{ type: string, message: string }>} evt - The event object.
-   */
-  function handleHistorySuccess(evt) {
-    const { type, message } = evt.detail;
-
-    if (type === 'add') {
-      toastify(message, { variant: 'success' });
-    }
-  }
-
-  /**
-   * Handles error events from the history component.
-   *
-   * @param {CustomEvent<{ type: string, message: string }>} evt - The event object.
-   */
-  function handleHistoryError(evt) {
-    const { type, message } = evt.detail;
-
-    if (type === 'remove' || type === 'empty') {
-      historyDialog?.hide();
-    }
-
-    toastify(message, { variant: 'danger' });
-  }
-
   scanBtn.addEventListener('click', handleScanButtonClick);
-  tabGroupEl.addEventListener('a-tab-show', debounce(handleTabShow, 250));
-  dropzoneEl.addEventListener('files-dropzone-drop', handleFileDrop);
   resizeObserverEl.addEventListener('resize-observer:resize', handleVideoCaptureResize);
-  settingsBtn.addEventListener('click', handleSettingsButtonClick);
-  settingsForm.addEventListener('change', debounce(handleSettingsFormChange, 500));
-  historyBtn.addEventListener('click', handleHistoryButtonClick);
   document.addEventListener('visibilitychange', handleDocumentVisibilityChange);
   document.addEventListener('keydown', handleDocumentKeyDown);
-  document.addEventListener('bs-history-success', handleHistorySuccess);
-  document.addEventListener('bs-history-error', handleHistoryError);
 })();
