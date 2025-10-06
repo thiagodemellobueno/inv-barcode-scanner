@@ -52,22 +52,3 @@ export const getSettings = async () => {
 export const setSettings = async data => {
   return setItem(STORAGE_PREFIX + SETTINGS_STORAGE_KEY, data);
 };
-
-/**
- * Gets the history from the storage.
- *
- * @returns {Promise<[ error: any, value: any ]>} The history and an error if occurred.
- */
-export const getHistory = async () => {
-  return getItem(STORAGE_PREFIX + HISTORY_STORAGE_KEY);
-};
-
-/**
- * Sets the history in the storage.
- *
- * @param {any} data - The history to set.
- * @returns {Promise<[ error: any ]>} An error if occurred.
- */
-export const setHistory = async data => {
-  return setItem(STORAGE_PREFIX + HISTORY_STORAGE_KEY, data);
-};

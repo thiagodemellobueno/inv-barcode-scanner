@@ -135,7 +135,7 @@
       <div id="scanInstructions" class="scan-instructions" hidden>
         Align barcode in the center of the frame.
       </div>
-
+      <button class="downloadCSVFile">Download CSV File</button>
       <div class="results"></div>
     </div>
   </div>
@@ -146,55 +146,9 @@
         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
       </svg>
 
-      <span>
-        Source code on <a href="https://github.com/georapbox/barcode-scanner" class="text-underline" target="_blank" rel="noreferrer noopener">Github</a>
-      </span>
     </div>
 
-    <p>
-      Licensed under <a href="https://github.com/georapbox/barcode-scanner/blob/main/LICENSE" target="_blank" rel="noopener">The MIT License (MIT)</a>
-    </p>
   </footer>
-
-  <modal-element id="historyDialog" class="popover-dialog history-dialog" placement="top-end" hidden>
-    <span slot="header">History</span>
-    <bs-history></bs-history>
-  </modal-element>
-
-  <modal-element id="settingsDialog" class="popover-dialog settings-dialog" placement="top-end" hidden>
-    <span slot="header">Settings</span>
-
-    <bs-settings>
-      <form id="settingsForm" autocomplete="off">
-        <fieldset>
-          <legend>When barcode is detected...</legend>
-          <ul>
-            <li><label><input type="checkbox" name="general-settings" value="openWebPage">Open web pages automatically</label></li>
-            <li><label><input type="checkbox" name="general-settings" value="openWebPageSameTab">Open web pages in the same tab</label></li>
-            <li><label><input type="checkbox" name="general-settings" value="addToHistory">Add to history</label></li>
-            <li><label><input type="checkbox" name="general-settings" value="continueScanning">Continue scanning</label></li>
-          </ul>
-        </fieldset>
-
-        <fieldset>
-          <legend>Effects</legend>
-          <ul>
-            <li><label><input type="checkbox" name="general-settings" value="beep">Beep</label></li>
-            <li><label><input type="checkbox" name="general-settings" value="vibrate">Vibrate (Android)</label></li>
-          </ul>
-        </fieldset>
-
-        <fieldset name="bs-formats">
-          <legend>
-            Supported formats
-            <br>
-            <small class="text-muted fw-normal">If none is checked, all formats will be supported.</small>
-          </legend>
-          <ul id="formatsList" class="formats-list"></ul>
-        </fieldset>
-      </form>
-    </bs-settings>
-  </modal-element>
 
   <script src="./js/register-service-worker.js" type="module"></script>
   <script src="./js/index.js" type="module"></script>

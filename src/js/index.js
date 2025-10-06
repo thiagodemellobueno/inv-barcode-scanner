@@ -1,8 +1,5 @@
-import '@georapbox/a-tab-group/dist/a-tab-group.js';
 import '@georapbox/web-share-element/dist/web-share-defined.js';
-import '@georapbox/files-dropzone-element/dist/files-dropzone-defined.js';
 import '@georapbox/resize-observer-element/dist/resize-observer-defined.js';
-import '@georapbox/modal-element/dist/modal-element-defined.js';
 import '@georapbox/alert-element/dist/alert-element-defined.js';
 import { ACCEPTED_MIME_TYPES } from './constants.js';
 import { getSettings, setSettings } from './services/storage.js';
@@ -20,7 +17,16 @@ import './components/clipboard-copy.js';
 import './components/bs-result.js';
 import { getBookDetails } from './helpers/getBookDetails.js';
 import { isValidISBN } from './helpers/isValidISBN.js';
-import { loadCSV, appendEntry, updateEntry } from './helpers/csv.js';
+import { csvToObject, updateEntry, hitEndPoint } from './helpers/csv.js';
+import csvData from './../assets/csv/pitventory.csv';
+
+/*
+@todo - load remote csv, or datastore to csv
+@todo - show download button
+@todo - display csv results, or initiate download
+@todo - consider storing list of scanned isbns
+@todo - consider 'start scanning' button
+*/
 
 (async function () {
   const videoCaptureEl = document.querySelector('video-capture');
@@ -37,21 +43,12 @@ import { loadCSV, appendEntry, updateEntry } from './helpers/csv.js';
   let scanTimeoutId = null;
   let shouldScan = true;
 
-  const CSV_PATH = './csv/pitventory.csv';
-
-  // load the csv file
-  let bookData = loadCSV(CSV_PATH);
-  console.log('»»»»»', bookData);
-
-  // By default the dialog elements are hidden for browsers that don't support the dialog element.
-  // If the dialog element is supported, we remove the hidden attribute and the dialogs' visibility
-  // is controlled by using the `showModal()` and `close()` methods.
-  // if (isDialogElementSupported()) {
-  //   globalActionsEl?.removeAttribute('hidden');
-  // }
+  //  console.log('raw csvData from file', csvData);
+  const bookInventory = await csvToObject(csvData);
 
   const { barcodeReaderError } = await BarcodeReader.setup();
 
+  hitEndPoint('hello there');
   if (barcodeReaderError) {
     const alertEl = document.getElementById('barcodeReaderError');
 
@@ -101,16 +98,36 @@ import { loadCSV, appendEntry, updateEntry } from './helpers/csv.js';
       const barcode = await barcodeReader.detect(videoCaptureVideoEl);
       const barcodeValue = barcode?.rawValue ?? '';
       let book = {};
-
       if (!barcodeValue) {
         throw new Error('No barcode detected');
       }
 
       createResult(cameraResultsEl, barcodeValue);
       book = await getBookDetails(barcodeValue);
-
+      // if we get a book out of it, we then perpare the object and...
       if (book) {
-        console.log('book', book);
+        console.log('A', book);
+        let bookObj = {
+          isbn: book.industryIdentifiers[0].identifier,
+          isbn10: book.industryIdentifiers[1].identifier,
+          title: book.title,
+          subtitle: book.subtitle,
+          authors: book.authors,
+          publisher: book.publisher,
+          publishedDate: book.publishedDate,
+          language: book.language,
+          pageCount: book.pageCount,
+          description: book.description,
+          categories: book.categories,
+          maturityRating: book.maturityRating,
+          dateAdded: book.dateAdded || new Date(Date.now()).toString(),
+          dateModified: new Date(Date.now()).toString(),
+          count: 1
+        };
+
+        console.log('hihihi', book, bookObj);
+        updateEntry(bookObj, bookInventory);
+        console.log('bookInventory', bookInventory);
       }
 
       triggerScanEffects();
@@ -133,6 +150,15 @@ import { loadCSV, appendEntry, updateEntry } from './helpers/csv.js';
     if (shouldScan) {
       scanTimeoutId = setTimeout(() => scan(), SCAN_RATE_LIMIT);
     }
+  }
+
+  /**
+   * Handles the click event on the download CSV.
+   * It is responsible for clearing previous results and starting the scan process again.
+   */
+  function handleDownloadButtonClick() {
+    // either open it up as text.
+    // store it somewhere.
   }
 
   /**

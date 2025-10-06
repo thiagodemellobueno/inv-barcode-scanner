@@ -7,5 +7,6 @@ export const ACCEPTED_MIME_TYPES = [
   'image/apng',
   'image/gif',
   'image/webp',
-  'image/avif'
+  'image/avif',
+  'text/csv'
 ];
