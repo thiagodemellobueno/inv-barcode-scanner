@@ -1,9 +1,6 @@
 import { parse, transform, stringify } from 'csv';
 import fetch from 'isomorphic-unfetch';
-
-export async function appendEntry(book, data) {
-  console.log('hi from appendEntry');
-}
+import axios from 'axios';
 
 export async function csvToObject(csvData) {
   let data = {};
@@ -32,28 +29,34 @@ export async function csvToObject(csvData) {
   return data;
 }
 
-export async function updateEntry(book, bookInventory) {
-  console.log('updateEntry', book, bookInventory);
+export async function updateInventory(book, bookInventory) {
+  // console.log('updateInventory', book.isbn, book.title, bookInventory);
   if (bookInventory[book.isbn]) {
     bookInventory[book.isbn].count += 1;
   } else {
     bookInventory[book.isbn] = book;
-    console.log('lets add another entry', book), bookInventory[book.isbn];
+    //console.log('lets add another entry', book), bookInventory[book.isbn];
   }
+  return bookInventory;
 }
 
 export async function incrementCount() {
   // find column that has qty, increment it by one
 }
 
-export async function hitEndPoint(string) {
-  try {
-    // calling the API
-    const the_date = Date.now();
-    const url = `endpoint.php?msg=${the_date}, ${string}`;
-    console.log('url', url);
-    return fetch(url).then(r => console.log(r));
-  } catch (err) {
-    console.log(err);
-  }
+export async function postData(book) {
+  // console.log('» | » postData', book);
+  const url = `http://localhost:8080/api.php/records/books/${book.isbn}`;
+  const req = axios
+    .post(url, book)
+    .then(r => {
+      console.log(r);
+    })
+    .catch(error => {
+      console.log('Error:', error);
+    });
+}
+
+export async function stringify(data) {
+  return await stringify(data);
 }

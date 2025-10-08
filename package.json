@@ -48,6 +48,7 @@
     "@eslint/js": "~9.26.0",
     "@parcel/packager-raw-url": "~2.15.0",
     "@parcel/transformer-webmanifest": "~2.15.0",
+    "axios": "~1.12.2",
     "eslint": "~9.26.0",
     "events": "~3.3.0",
     "gh-pages": "~6.3.0",
@@ -59,7 +60,9 @@
     "process": "~0.11.10",
     "rimraf": "~6.0.1",
     "stream-browserify": "~3.0.0",
+    "stream-http": "~3.2.0",
     "svgo": "~3.3.2",
+    "url": "~0.11.4",
     "util": "~0.12.5",
     "workbox-cli": "~7.3.0"
   },
@@ -71,7 +74,8 @@
     "barcode-detector": "~3.0.4",
     "csv": "~6.4.1",
     "idb-keyval": "~6.2.2",
-    "isomorphic-unfetch": "~4.0.2"
+    "isomorphic-unfetch": "~4.0.2",
+    "json-2-csv": "~5.5.9"
   },
   "browserslist": "> 0.5%, last 2 versions, not dead"
 }

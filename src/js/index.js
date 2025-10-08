@@ -17,7 +17,7 @@ import './components/clipboard-copy.js';
 import './components/bs-result.js';
 import { getBookDetails } from './helpers/getBookDetails.js';
 import { isValidISBN } from './helpers/isValidISBN.js';
-import { csvToObject, updateEntry, hitEndPoint } from './helpers/csv.js';
+import { updateInventory, stringify } from './helpers/csv.js';
 import csvData from './../assets/csv/pitventory.csv';
 
 /*
@@ -44,11 +44,10 @@ import csvData from './../assets/csv/pitventory.csv';
   let shouldScan = true;
 
   //  console.log('raw csvData from file', csvData);
-  const bookInventory = await csvToObject(csvData);
+  let bookInventory = {}; // await csvToObject(csvData);
 
   const { barcodeReaderError } = await BarcodeReader.setup();
 
-  hitEndPoint('hello there');
   if (barcodeReaderError) {
     const alertEl = document.getElementById('barcodeReaderError');
 
@@ -105,8 +104,8 @@ import csvData from './../assets/csv/pitventory.csv';
       createResult(cameraResultsEl, barcodeValue);
       book = await getBookDetails(barcodeValue);
       // if we get a book out of it, we then perpare the object and...
+      // console.log('book !!', book);
       if (book) {
-        console.log('A', book);
         let bookObj = {
           isbn: book.industryIdentifiers[0].identifier,
           isbn10: book.industryIdentifiers[1].identifier,
@@ -125,9 +124,8 @@ import csvData from './../assets/csv/pitventory.csv';
           count: 1
         };
 
-        console.log('hihihi', book, bookObj);
-        updateEntry(bookObj, bookInventory);
-        console.log('bookInventory', bookInventory);
+        updateInventory(bookObj, bookInventory);
+        //console.log('»»»»»', bookInventory);
       }
 
       triggerScanEffects();
@@ -152,14 +150,73 @@ import csvData from './../assets/csv/pitventory.csv';
     }
   }
 
+  // /**
+  //  * Handles the click event on the test api button, for debugging
+  //  */
+  // function handleTestAPI() {
+  //   // either open it up as text.
+  //   // store it somewhere.
+  //   postData({
+  //     title: 'Hello',
+  //     subtitle: 'There',
+  //     authors: ['me'],
+  //     description: 'test',
+  //     count: 2,
+  //     pageCount: 120,
+  //     isbn: 9780395177112
+  //   });
+  // }
+  // const testAPIButton = document.querySelector('.testAPIButton');
+  // testAPIButton?.addEventListener('click', handleTestAPI);
+
   /**
    * Handles the click event on the download CSV.
    * It is responsible for clearing previous results and starting the scan process again.
    */
-  function handleDownloadButtonClick() {
+  async function handleDownloadButtonClick() {
     // either open it up as text.
     // store it somewhere.
+    let bookArray = [];
+    let output = '';
+    // console.log(bookInventory);
+    const headers = [
+      'isbn',
+      'isbn10',
+      'title',
+      'subtitle',
+      'authors',
+      'publisher',
+      'publishedData',
+      'language',
+      'pageCount',
+      'description',
+      'categories',
+      'maturityRating',
+      'dateAdded',
+      'dateModified',
+      'count',
+      'notes'
+    ];
+
+    output += headers.join(',').toString() + '\n';
+
+    for (let book in bookInventory) {
+      console.log('book »', book);
+      let bk = bookInventory[book];
+      for (let item in bk) {
+        console.log('»»', book, item, bk[item]);
+        let entry = bk[item];
+        if (typeof bk[item] === Array) {
+          entry = bk[item].join(', ');
+        }
+        output += `"${entry}",`;
+      }
+      output += '\n';
+      console.log('\n\n', output);
+    }
   }
+  const downloadButton = document.querySelector('.downloadButton');
+  downloadButton?.addEventListener('click', handleDownloadButtonClick);
 
   /**
    * Handles the click event on the scan button.
@@ -353,7 +410,7 @@ import csvData from './../assets/csv/pitventory.csv';
    * It is responsible for triggering the scan button click event if there is already a barcode detected.
    */
   function handleDocumentEscapeKey() {
-    const cameraTabSelected = tabGroupEl.querySelector('#cameraTab').hasAttribute('selected');
+    const cameraTabSelected = true; //tabGroupEl.querySelector('#cameraTab').hasAttribute('selected');
     const scanBtnVisible = !scanBtn.hidden;
 
     if (!scanBtnVisible || !cameraTabSelected || anyDialogOpen) {

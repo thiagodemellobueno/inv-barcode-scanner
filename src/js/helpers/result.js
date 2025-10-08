@@ -9,8 +9,6 @@ export async function createResult(containerEl, value) {
     return;
   }
 
-  console.log(':::: createResult » | »»', value);
-
   const prevResultEl = containerEl.querySelector(`bs-result[value="${value}"]`);
 
   if (prevResultEl) {
